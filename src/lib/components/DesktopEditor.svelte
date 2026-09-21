@@ -58,7 +58,7 @@
 
   const renderAIPromptGutterGlyphIcon = () => {
     decorationsCollection?.clear();
-    if (!editor || showPopup) {
+    if (!editor || showPopup || !env.isEnabledMermaidChartLinks) {
       return;
     }
     const model = editor.getModel();
@@ -134,7 +134,12 @@
 
     editor.onMouseDown((e) => {
       const isGutter = e.target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN;
-      if (isGutter && e.target.position?.lineNumber === lastMouseLine && lastMouseLine > 0) {
+      if (
+        env.isEnabledMermaidChartLinks &&
+        isGutter &&
+        e.target.position?.lineNumber === lastMouseLine &&
+        lastMouseLine > 0
+      ) {
         e.event.preventDefault();
         e.event.stopPropagation();
         toggleAIPopup(e.target.position.lineNumber);
