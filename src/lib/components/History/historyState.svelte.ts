@@ -4,6 +4,7 @@ import { inputState } from '$lib/util/state.svelte';
 import { logEvent } from '$lib/util/stats';
 import { generateSlug } from 'random-word-slugs';
 import { v4 as uuidV4 } from 'uuid';
+import { hubSlot } from './hubSlot.svelte';
 
 const MAX_AUTO_HISTORY_LENGTH = 30;
 const AUTO_SAVE_INTERVAL = 60_000;
@@ -14,7 +15,9 @@ const mode = persisted<HistoryType>('autoHistoryMode', 'manual');
 let loader = $state<HistoryEntry[]>([]);
 
 // Loader entries are in-memory, so a persisted 'loader' mode is empty after reload.
-if (mode.value === 'loader') {
+// 'hub' is reset for a related reason: whether a hub is reachable is not known until it
+// has been probed, and starting on a tab that may not exist would leave the panel blank.
+if (mode.value === 'loader' || mode.value === 'hub') {
   mode.value = 'manual';
 }
 
@@ -26,6 +29,10 @@ const slotFor = (m: HistoryType): Persisted<HistoryEntry[]> | null => {
     }
     case 'manual': {
       return manual;
+    }
+    case 'hub': {
+      // Not persisted locally: reads and writes go to the offline hub. See hubSlot.
+      return hubSlot;
     }
     default: {
       return null;
@@ -54,7 +61,7 @@ export const setMode = (next: HistoryType): void => {
 export const stateKey = (state: State): string =>
   JSON.stringify({ code: state.code, mermaid: state.mermaid });
 
-const createEntry = (state: State, type: 'auto' | 'manual'): HistoryEntry => ({
+const createEntry = (state: State, type: 'auto' | 'manual' | 'hub'): HistoryEntry => ({
   id: uuidV4(),
   name: generateSlug(2),
   state,
@@ -66,7 +73,7 @@ const createEntry = (state: State, type: 'auto' | 'manual'): HistoryEntry => ({
 const addEntry = (
   slot: Persisted<HistoryEntry[]>,
   state: State,
-  type: 'auto' | 'manual',
+  type: 'auto' | 'manual' | 'hub',
   maxLength?: number
 ): boolean => {
   const entries = slot.value;
@@ -81,6 +88,10 @@ const addEntry = (
 };
 
 export const addManualEntry = (state: State): boolean => addEntry(manual, state, 'manual');
+
+// Saves to the offline hub rather than localStorage, so anyone else on the same box can
+// open it. Same dedup rule as the local slots.
+export const addHubEntry = (state: State): boolean => addEntry(hubSlot, state, 'hub');
 
 export const addAutoEntry = (state: State): boolean =>
   addEntry(auto, state, 'auto', MAX_AUTO_HISTORY_LENGTH);
