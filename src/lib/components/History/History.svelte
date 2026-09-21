@@ -20,6 +20,7 @@
   import { Button } from '../ui/button';
   import { Separator } from '../ui/separator';
   import {
+    addHubEntry,
     addManualEntry,
     clearActive,
     historyState,
@@ -28,6 +29,8 @@
     restoreEntries,
     setMode
   } from './historyState.svelte';
+  import { hubAvailable, hydrateHub } from './hubSlot.svelte';
+  import CloudIcon from '~icons/material-symbols/cloud-outline';
 
   dayjs.extend(dayjsRelativeTime);
 
@@ -36,10 +39,19 @@
     { id: 'auto', title: 'Timeline', icon: HistoryIcon }
   ];
   const loaderTab: Tab = { id: 'loader', title: 'Revisions', icon: GitAltIcon };
+  const hubTab: Tab = { id: 'hub', title: 'Hub', icon: CloudIcon };
 
-  const tabs = $derived(
-    historyState.loaderEntries.length > 0 ? [loaderTab, ...baseTabs] : baseTabs
-  );
+  // Probe once on mount. Off-network this never resolves to available and the tab
+  // simply never appears, which is the desktop case.
+  $effect(() => {
+    void hydrateHub();
+  });
+
+  const tabs = $derived([
+    ...(historyState.loaderEntries.length > 0 ? [loaderTab] : []),
+    ...baseTabs,
+    ...(hubAvailable() ? [hubTab] : [])
+  ]);
 
   // Surface revisions once when they first appear; the user can switch away after.
   let revisionsShown = false;
@@ -64,7 +76,9 @@
   const emptyMessage = $derived(
     historyState.mode === 'auto'
       ? 'No timeline snapshots yet.\nThe Timeline is saved automatically every minute.'
-      : 'No saved states yet.\nClick the Save button to bookmark the current diagram and restore it later.'
+      : historyState.mode === 'hub'
+        ? 'Nothing saved to the hub yet.\nClick Save to store this diagram on the hub, where anyone else on it can open it.'
+        : 'No saved states yet.\nClick the Save button to bookmark the current diagram and restore it later.'
   );
 
   const tabSelectHandler = (tab: Tab) => {
@@ -99,8 +113,12 @@
     input.click();
   };
 
+  // Save into whichever store the open tab is showing, so the button means what the
+  // tab says rather than always writing to localStorage.
   const saveHistory = () => {
-    if (!addManualEntry($state.snapshot(inputState))) {
+    const snapshot = $state.snapshot(inputState);
+    const saved = historyState.mode === 'hub' ? addHubEntry(snapshot) : addManualEntry(snapshot);
+    if (!saved) {
       notify('State already saved.');
     }
   };

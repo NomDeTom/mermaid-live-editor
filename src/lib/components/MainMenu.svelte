@@ -15,7 +15,6 @@
   import ContrastIcon from '~icons/material-symbols/contrast';
   import PluginIcon from '~icons/material-symbols/electrical-services-rounded';
   import MenuIcon from '~icons/material-symbols/menu-rounded';
-  import CommunityIcon from '~icons/material-symbols/person-play-outline-rounded';
   import PlaygroundIcon from '~icons/material-symbols/shape-line-outline';
   import MermaidChartIcon from './MermaidChartIcon.svelte';
 
@@ -52,12 +51,6 @@
       label: 'Documentation',
       icon: BookIcon,
       href: `${env.docsUrl}/intro/`,
-      renderer: menuItem
-    },
-    {
-      label: 'Community',
-      icon: CommunityIcon,
-      href: 'https://discord.gg/sKeNQX4Wtj',
       renderer: menuItem
     },
     {

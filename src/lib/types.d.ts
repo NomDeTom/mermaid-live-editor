@@ -66,7 +66,7 @@ export type LoaderConfig =
       type: 'files';
       config: FileLoaderConfig;
     };
-export type HistoryType = 'auto' | 'manual' | 'loader';
+export type HistoryType = 'auto' | 'manual' | 'loader' | 'hub';
 export type HistoryEntry = { id: string; state: State; time: number; url?: string } & (
   | {
       type: 'loader';
