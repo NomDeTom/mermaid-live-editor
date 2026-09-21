@@ -8,7 +8,7 @@
     "dev:force": "MERMAID_LOCAL=true pnpm dev --force",
     "dev:test": "pnpm dev",
     "build": "pnpm build:embed && vite build",
-    "build:hub": "pnpm build:embed && vite build --mode hub",
+    "build:hub": "DOTENV_CONFIG_PATH=.env.hub pnpm build:embed && DOTENV_CONFIG_PATH=.env.hub vite build --mode hub",
     "build:embed": "vite build --config vite.embed.config.js",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
