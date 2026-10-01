@@ -29,6 +29,12 @@ describe('getDiagramDocumentationUrl', () => {
     );
   });
 
+  it('keeps a relative docs base, such as an offline hub book, relative', () => {
+    expect(getDiagramDocumentationUrl('flowchart', 'code', '/wiki/content/mermaid-docs/')).toBe(
+      '/wiki/content/mermaid-docs/syntax/flowchart.html'
+    );
+  });
+
   it('uses the diagram-specific config anchor when editor mode is config', () => {
     expect(getDiagramDocumentationUrl('flowchart', 'config', mermaidAiDocs)).toBe(
       'https://mermaid.ai/open-source/syntax/flowchart.html#configuration'
