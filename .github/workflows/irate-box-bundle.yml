@@ -44,6 +44,28 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=6144
         run: pnpm build:hub
+      - name: Third-party notices
+        # THIRD-PARTY-NOTICES.txt in the bundle: what npm does not describe first, then every
+        # package installed under node_modules with its license text -- a superset of what the
+        # bundle contains, since bundlers also take from devDependencies.
+        run: |
+          out="docs/THIRD-PARTY-NOTICES.txt"
+          {
+            cat <<NOTICE
+          Mermaid Live Editor (MIT License), hub build, built for the Irate-Box hub from ${{ github.repository }} at ${{ github.sha }}.
+          Source: https://github.com/${{ github.repository }}/tree/${{ github.sha }}
+
+          NOTICE
+            cat <<'NOTICE'
+          Includes mermaid (MIT) and its ELK layout: elkjs is under the Eclipse Public License 2.0,
+          source at https://github.com/kieler/elkjs (the version is in the list below).
+          Includes Font Awesome Free, vendored under vendor/fontawesome: icons CC BY 4.0, fonts
+          SIL OFL 1.1, code MIT -- https://fontawesome.com/license/free (its LICENSE.txt below).
+
+          NOTICE
+            node .github/scripts/irate-box-notices.mjs node_modules
+          } > "$out"
+          du -h "$out"
       - name: Record what was built
         run: |
           cat > "docs/irate-box-bundle.json" <<JSON
