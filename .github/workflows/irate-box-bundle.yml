@@ -32,6 +32,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || 'hub' }}
+      # The build is of the hub branch; the notices script lives with this workflow.
+      - uses: actions/checkout@v7
+        with:
+          path: .ci
+          sparse-checkout: .github/scripts
       - uses: pnpm/action-setup@v6
         with:
           package_json_file: package.json
@@ -52,8 +57,8 @@ jobs:
           out="docs/THIRD-PARTY-NOTICES.txt"
           {
             cat <<NOTICE
-          Mermaid Live Editor (MIT License), hub build, built for the Irate-Box hub from ${{ github.repository }} at ${{ github.sha }}.
-          Source: https://github.com/${{ github.repository }}/tree/${{ github.sha }}
+          Mermaid Live Editor (MIT License), hub build, built for the Irate-Box hub from ${{ github.repository }} at $(git rev-parse HEAD).
+          Source: https://github.com/${{ github.repository }}/tree/$(git rev-parse HEAD)
 
           NOTICE
             cat <<'NOTICE'
@@ -63,7 +68,7 @@ jobs:
           SIL OFL 1.1, code MIT -- https://fontawesome.com/license/free (its LICENSE.txt below).
 
           NOTICE
-            node .github/scripts/irate-box-notices.mjs node_modules
+            node .ci/.github/scripts/irate-box-notices.mjs node_modules
           } > "$out"
           du -h "$out"
       - name: Record what was built
