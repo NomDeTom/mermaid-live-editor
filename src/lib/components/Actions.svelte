@@ -10,17 +10,27 @@
   import { TID } from '$/constants';
   import { getDomain } from '$/util/util';
   import { browser } from '$app/environment';
+  import { assets } from '$app/paths';
   import { waitForRender } from '$lib/util/autoSync';
+  import { env } from '$lib/util/env';
+  import { listNotePages, type NotePage } from '$lib/util/fileLoaders/notes';
   import { inputState, updateCodeStore, urls, validatedState } from '$lib/util/state.svelte';
   import { logEvent } from '$lib/util/stats';
   import { version as FAVersion } from '@fortawesome/fontawesome-free/package.json';
   import dayjs from 'dayjs';
   import { toBase64 } from 'js-base64';
+  import { onMount } from 'svelte';
   import DownloadIcon from '~icons/material-symbols/download';
   import ExternalLinkIcon from '~icons/material-symbols/open-in-new-rounded';
   import WidthIcon from '~icons/material-symbols/width-rounded';
 
-  const FONT_AWESOME_URL = `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/${FAVersion}/css/all.min.css`;
+  const FONT_AWESOME_CDN_URL = `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/${FAVersion}/css/all.min.css`;
+  // Offline builds point exported SVGs at the copy vendored into this build (pnpm build:hub).
+  // Absolute, so an SVG saved from the hub still finds it anywhere on the hub's network.
+  const fontAwesomeURL = (): string =>
+    env.fontAwesomeLocal && browser
+      ? new URL(`${assets}/vendor/fontawesome/css/all.min.css`, window.location.href).href
+      : FONT_AWESOME_CDN_URL;
 
   type Exporter = (context: CanvasRenderingContext2D, image: HTMLImageElement) => () => void;
 
@@ -93,7 +103,7 @@
       .replaceAll(/<img([^>]*)>/g, (m, g: string) => `<img ${g} />`);
 
     return toBase64(`<?xml version="1.0" encoding="UTF-8"?>
-<?xml-stylesheet href="${FONT_AWESOME_URL}" type="text/css"?>
+<?xml-stylesheet href="${fontAwesomeURL()}" type="text/css"?>
 ${svgString}`);
   };
 
@@ -237,6 +247,30 @@ ${svgString}`);
     logEvent('loadGist');
   };
 
+  // Hub notes: SilverBullet pages on the same origin, any of which may hold ```mermaid blocks.
+  let notePages: NotePage[] = $state([]);
+  let notePage = $state('');
+  let notesError = $state('');
+  onMount(() => {
+    if (!env.notesUrl) {
+      return;
+    }
+    listNotePages()
+      .then((pages) => {
+        notePages = pages;
+        notePage = pages[0]?.name ?? '';
+      })
+      .catch(() => {
+        notesError = "The hub's notes did not answer.";
+      });
+  });
+
+  const loadNote = () => {
+    if (notePage) {
+      window.location.href = `${window.location.pathname}?note=${encodeURIComponent(notePage)}`;
+    }
+  };
+
   let imageSizeMode: 'auto' | 'width' | 'height' = $state('auto');
 
   $effect(() => {
@@ -312,6 +346,25 @@ ${svgString}`);
       <Input type="url" bind:value={gistURL} placeholder="Enter Gist URL" />
       <Button onclick={loadGist}>Load Gist</Button>
     </div>
+    {#if env.notesUrl}
+      <div class="flex w-full items-center gap-2">
+        <select
+          class="h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm"
+          aria-label="Hub note"
+          bind:value={notePage}
+          disabled={!notePages.length}>
+          {#each notePages as page (page.name)}
+            <option value={page.name}>{page.name}</option>
+          {:else}
+            <option value="">No notes on the hub</option>
+          {/each}
+        </select>
+        <Button onclick={loadNote} disabled={!notePage}>Load note</Button>
+      </div>
+      {#if notesError}
+        <p class="text-sm text-muted-foreground">{notesError}</p>
+      {/if}
+    {/if}
     {#if isNetlify}
       <div class="flex w-full items-center justify-center">
         <a class="link text-sm text-gray-500 underline" href="https://netlify.com">

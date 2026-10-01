@@ -2,9 +2,11 @@ import type { Loader, State } from '$lib/types';
 import { defaultState, sanitizeConfig, updateCodeStore } from '$lib/util/state.svelte';
 import { fetchText } from '$lib/util/util';
 import { loadGistData } from './gist';
+import { loadNoteData } from './notes';
 
 const loaders: Record<string, Loader> = {
-  gist: loadGistData
+  gist: loadGistData,
+  note: loadNoteData
 };
 
 export const loadDataFromUrl = async (): Promise<void> => {
@@ -45,6 +47,14 @@ export const loadDataFromUrl = async (): Promise<void> => {
           break;
         } catch (error) {
           console.error(error);
+          // Say so: a note with no mermaid block or an unreachable gist otherwise looks
+          // exactly like a page that ignored the request.
+          // Imported here, not at the top: this module is on the startup path, and the toast
+          // library is only worth loading once something has actually gone wrong.
+          const { notify } = await import('$lib/util/notify');
+          notify(
+            `Could not load from ${key}: ${error instanceof Error ? error.message : String(error)}`
+          );
         }
       }
     }

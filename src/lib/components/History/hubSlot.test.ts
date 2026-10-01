@@ -1,6 +1,10 @@
 import type { HistoryEntry } from '$lib/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// The real notify pulls in svelte-sonner, which is slow to import cold and irrelevant here.
+const notify = vi.hoisted(() => vi.fn());
+vi.mock('$lib/util/notify', () => ({ notify }));
+
 // The slot keeps module-level state (hydrated-once, the entry mirror), so each test
 // imports a fresh copy rather than trying to reset it.
 const freshModule = async () => {
@@ -88,6 +92,20 @@ describe('hubSlot', () => {
     expect(init.method).toBe('POST');
     const body = JSON.parse(init.body);
     expect(body).toMatchObject({ id: 'new-1', kind: 'mermaid', name: 'first' });
+  });
+
+  it('drops an entry the hub refused, and says so', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ now: 1, saves: [] }));
+    const { hubSlot, hydrateHub } = await freshModule();
+    await hydrateHub();
+    notify.mockClear();
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    hubSlot.value = [entry('lost-1', 'never saved')];
+    expect(hubSlot.value).toHaveLength(1); // optimistic, until the POST settles
+
+    await vi.waitFor(() => expect(notify).toHaveBeenCalledOnce());
+    expect(hubSlot.value).toEqual([]);
   });
 
   it('PATCHes a rename rather than re-creating the entry', async () => {

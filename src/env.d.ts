@@ -10,6 +10,9 @@ interface ImportMetaEnv {
   readonly MERMAID_PRIVACY_POLICY_URL?: string;
   readonly MERMAID_HIDE_PRIVACY_POLICY?: string;
   readonly MERMAID_HUB_RETURN_SCRIPT?: string;
+  readonly MERMAID_FONT_AWESOME_LOCAL?: string;
+  readonly MERMAID_GIST_API_URL?: string;
+  readonly MERMAID_NOTES_URL?: string;
   // more env variables...
 }
 

@@ -18,6 +18,7 @@
 
 import type { HistoryEntry, State } from '$lib/types';
 import type { Persisted } from '$lib/util/persist.svelte';
+import { notify } from '$lib/util/notify';
 
 const OVERRIDE_KEY = 'hubStoreUrl';
 const KIND = 'mermaid';
@@ -89,8 +90,8 @@ const request = async (path: string, init?: RequestInit): Promise<Response | und
   }
 };
 
-const create = async (entry: HistoryEntry): Promise<void> => {
-  await request('/api/saves', {
+const create = async (entry: HistoryEntry): Promise<boolean> => {
+  const response = await request('/api/saves', {
     method: 'POST',
     body: JSON.stringify({
       id: entry.id,
@@ -100,17 +101,18 @@ const create = async (entry: HistoryEntry): Promise<void> => {
       thumb: captureThumb()
     })
   });
+  return !!response;
 };
 
-const rename = async (entry: HistoryEntry): Promise<void> => {
-  await request(`/api/saves/${entry.id}`, {
+const rename = async (entry: HistoryEntry): Promise<boolean> => {
+  return !!(await request(`/api/saves/${entry.id}`, {
     method: 'PATCH',
     body: JSON.stringify({ name: entry.name })
-  });
+  }));
 };
 
-const remove = async (id: string): Promise<void> => {
-  await request(`/api/saves/${id}`, { method: 'DELETE' });
+const remove = async (id: string): Promise<boolean> => {
+  return !!(await request(`/api/saves/${id}`, { method: 'DELETE' }));
 };
 
 // The panel replaces the array wholesale; work out what actually changed.
@@ -121,14 +123,21 @@ const writeThrough = (next: HistoryEntry[]): void => {
   for (const entry of next) {
     const previous = before.get(entry.id);
     if (!previous) {
-      void create(entry);
+      void create(entry).then((ok) => {
+        if (!ok) {
+          // Not on the hub, so not in the list either: the panel must not show a save
+          // that a reload would make disappear. The diagram itself is still in the editor.
+          entries = entries.filter((e) => e.id !== entry.id);
+          notify('Could not save to the hub: it did not answer. Your diagram is unchanged.');
+        }
+      });
     } else if (previous.name !== entry.name) {
-      void rename(entry);
+      void rename(entry).then((ok) => ok || notify('Could not rename on the hub.'));
     }
   }
   for (const entry of entries) {
     if (!nextIDs.has(entry.id)) {
-      void remove(entry.id);
+      void remove(entry.id).then((ok) => ok || notify('Could not delete from the hub.'));
     }
   }
 };

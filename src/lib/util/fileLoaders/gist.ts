@@ -2,7 +2,18 @@
 import { setLoaderEntries } from '$lib/components/History/historyState.svelte';
 import type { State } from '$lib/types';
 import { defaultState } from '$lib/util/state.svelte';
+import { env } from '$lib/util/env';
 import { fetchJSON, fetchText } from '$lib/util/util';
+
+// The path of a gist page URL: /<user>/<id>[/<revision>]. Any host, so a local service
+// that mirrors gist.github.com's URLs and api.github.com's /gists API (env.gistApiUrl) works.
+const gistPath = (url: string): string | undefined => {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return undefined;
+  }
+};
 
 const codeFileName = 'code.mmd';
 const configFileName = 'config.json';
@@ -40,7 +51,7 @@ interface GistResponse {
 }
 
 const getGistData = async (gistURL: string): Promise<GistData> => {
-  const path = gistURL.split('github.com').pop();
+  const path = gistPath(gistURL);
   if (!path) {
     throw new Error('Invalid GitHub URL' + gistURL);
   }
@@ -48,7 +59,7 @@ const getGistData = async (gistURL: string): Promise<GistData> => {
   const [_, __, gistID, revisionID] = path.split('/');
 
   const { html_url, files, history }: GistResponse = await fetchJSON(
-    `https://api.github.com/gists/${gistID}${revisionID ? '/' + revisionID : ''}`
+    `${env.gistApiUrl}/gists/${gistID}${revisionID ? '/' + revisionID : ''}`
   );
   if (isValidGist(files)) {
     const code = await getFileContent(files[codeFileName]);
@@ -89,7 +100,7 @@ const getStateFromGist = (gist: GistData, gistURL: string = gist.url): State => 
 };
 
 export const loadGistData = async (gistURL: string): Promise<State> => {
-  const path = gistURL.split('github.com').pop();
+  const path = gistPath(gistURL);
   if (!path) {
     throw new Error('Invalid GitHub URL' + gistURL);
   }
@@ -97,7 +108,7 @@ export const loadGistData = async (gistURL: string): Promise<State> => {
   const [_, __, gistID, revisionID] = path.split('/');
 
   const { history }: GistResponse = await fetchJSON(
-    `https://api.github.com/gists/${gistID}${revisionID ? '/' + revisionID : ''}`
+    `${env.gistApiUrl}/gists/${gistID}${revisionID ? '/' + revisionID : ''}`
   );
   const gistHistory: GistData[] = [];
   for (const entry of history) {
